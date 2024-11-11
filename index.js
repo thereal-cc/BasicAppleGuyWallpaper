@@ -3,12 +3,10 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 
-// Check the response status
 function checkStatus(response) {
     if (response.status != 200) throw new Error(`⛔ Failed to fetch webpage: ${response.statusText}`);
 }
 
-// Create download folders
 async function createFolders(folderName) {
     const downloadDir = path.join(__dirname, folderName);
     if (!fs.existsSync(downloadDir)) {
@@ -18,12 +16,12 @@ async function createFolders(folderName) {
     return downloadDir;
 }
 
-// Download image function
 async function downloadImage(url, filePath) {
+    // Validate Response
     const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to download image: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`Failed to download image: ${response.statusText}`);
+    
+    // Download Image
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     await fs.promises.writeFile(filePath, buffer);
@@ -32,7 +30,7 @@ async function downloadImage(url, filePath) {
 // Main function
 async function main() {
     console.log("Searching For Images...");
-    const url = "https://basicappleguy.com/?offset=1714399059698&category=Wallpaper";
+    const url = "https://basicappleguy.com/basicappleblog/category/Wallpaper";
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
@@ -54,9 +52,11 @@ async function main() {
             const pageResponse = await axios.get(pageUrl);
             checkStatus(pageResponse);
 
+            // Get Individual image links
             const page = cheerio.load(pageResponse.data);
             const imgLinks = page('p a');
 
+            // Download Each Image
             for (let i = 0; i < imgLinks.length; i++) {
                 const element = imgLinks[i];
                 let imgURL = page(element).attr('href');
@@ -70,23 +70,17 @@ async function main() {
             
                     // Sort into folders (iPhone, iPad, Mac)
                     let folderName = "Others";
-                    if (filename.toLowerCase().includes("iphone")) {
-                        folderName = "iPhone";
-                    } else if (filename.toLowerCase().includes("ipad")) {
-                        folderName = "iPad";
-                    } else if (filename.toLowerCase().includes("mac")) {
-                        folderName = "Mac";
-                    }
-            
+                    if (filename.toLowerCase().includes("iphone")) folderName = "iPhone";
+                    else if (filename.toLowerCase().includes("ipad")) folderName = "iPad";
+                    else if (filename.toLowerCase().includes("mac")) folderName = "Mac";
                     const subDir = path.join(downloadDir, folderName);
                     if (!fs.existsSync(subDir)) {
                         fs.mkdirSync(subDir);
                         console.info(`📁 Created directory: ${subDir}`);
                     }
             
+                    // Download Images
                     const filePath = path.join(subDir, filename);
-                    
-                    // Download the image sequentially
                     await downloadImage(downloadURL, filePath);
                     console.info(`🖼️ Saved image to ${filePath}`);
                     await delay(250);
@@ -95,7 +89,6 @@ async function main() {
         }).get();
 
         await Promise.all(requests); // Wait for all the page requests to finish
-
         console.log("Found All Images");
     } catch (error) {
         console.error(`Error: ${error.message}`);
