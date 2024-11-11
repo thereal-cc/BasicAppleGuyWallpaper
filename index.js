@@ -32,7 +32,7 @@ async function downloadImage(url, filePath) {
 // Main function
 async function main() {
     console.log("Searching For Images...");
-    const url = "https://basicappleguy.com/basicappleblog/category/Wallpaper";
+    const url = "https://basicappleguy.com/?offset=1714399059698&category=Wallpaper";
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
@@ -57,18 +57,19 @@ async function main() {
             const page = cheerio.load(pageResponse.data);
             const imgLinks = page('p a');
 
-            imgLinks.each(async (index, element) => {
+            for (let i = 0; i < imgLinks.length; i++) {
+                const element = imgLinks[i];
                 let imgURL = page(element).attr('href');
                 
-                // Found a valid Image
                 if (imgURL.startsWith('/s')) {
-                    console.log("Found an Image!");
                     await delay(100);
                     const downloadURL = 'https://basicappleguy.com' + imgURL;
-                    const filename = imgURL.replace(/^\/s/, ''); // Remove the leading "/s"
-
+                    const filename = imgURL.replace(/^\/s/, '');
+            
+                    console.log("Found an Image! Starting download...");
+            
                     // Sort into folders (iPhone, iPad, Mac)
-                    let folderName = "Others"; // Default folder
+                    let folderName = "Others";
                     if (filename.toLowerCase().includes("iphone")) {
                         folderName = "iPhone";
                     } else if (filename.toLowerCase().includes("ipad")) {
@@ -76,21 +77,21 @@ async function main() {
                     } else if (filename.toLowerCase().includes("mac")) {
                         folderName = "Mac";
                     }
-
-                    // Create folder if it doesn't exist
+            
                     const subDir = path.join(downloadDir, folderName);
                     if (!fs.existsSync(subDir)) {
                         fs.mkdirSync(subDir);
                         console.info(`📁 Created directory: ${subDir}`);
                     }
-
-                    // Set file path
+            
                     const filePath = path.join(subDir, filename);
+                    
+                    // Download the image sequentially
                     await downloadImage(downloadURL, filePath);
                     console.info(`🖼️ Saved image to ${filePath}`);
                     await delay(250);
                 }
-            });
+            }
         }).get();
 
         await Promise.all(requests); // Wait for all the page requests to finish
